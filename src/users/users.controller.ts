@@ -1,20 +1,25 @@
 import {
-  Controller,
-  Post,
   Body,
-  Patch,
-  Get,
-  Param,
-  Query,
+  Controller,
   Delete,
+  Get,
   NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Session,
+  UseGuards,
 } from '@nestjs/common';
-import { CreateUserDto } from './dtos/create-user.dto';
-import { UsersService } from './users.service';
-import { UpdateUserDto } from './dtos/update-user.dto';
 import { Serialize } from 'src/interceptors/serialize.interceptor';
-import { UserDto } from './dtos/user.dto';
 import { AuthService } from './auth.service';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { CreateUserDto } from './dtos/create-user.dto';
+import { UpdateUserDto } from './dtos/update-user.dto';
+import { UserDto } from './dtos/user.dto';
+import { User } from './user.entity';
+import { UsersService } from './users.service';
+import { AuthGuard } from 'src/guards/auth.guard';
 
 @Controller('auth')
 @Serialize(UserDto)
@@ -23,6 +28,33 @@ export class UsersController {
     private usersService: UsersService,
     private authService: AuthService,
   ) {}
+
+  @Get('/whoami')
+  @UseGuards(AuthGuard)
+  whoAmI(@CurrentUser() user: User) {
+    // it could ve solved with @Request
+    return user;
+    //  return this.usersService.findOne(session.userId);
+  }
+
+  @Post('/signout')
+  signOut(@Session() session: any) {
+    session.userId = null;
+  }
+
+  @Post('/signup')
+  async createUser(@Body() body: CreateUserDto, @Session() session: any) {
+    const user = await this.authService.signup(body.email, body.password);
+    session.userId = user.id;
+    return user;
+  }
+
+  @Post('/signin')
+  async signin(@Body() body: CreateUserDto, @Session() session: any) {
+    const user = await this.authService.signin(body.email, body.password);
+    session.userId = user.id;
+    return user;
+  }
 
   @Get('/:id')
   async findUser(@Param('id') id: string) {
@@ -36,16 +68,6 @@ export class UsersController {
   @Get()
   async findAllUsers(@Query('email') email: string) {
     return this.usersService.find(email);
-  }
-
-  @Post('/signup')
-  createUser(@Body() body: CreateUserDto) {
-    return this.authService.signup(body.email, body.password);
-  }
-
-  @Post('/signin')
-  signin(@Body() body: CreateUserDto) {
-    return this.authService.signin(body.email, body.password);
   }
 
   @Patch('/:id')
