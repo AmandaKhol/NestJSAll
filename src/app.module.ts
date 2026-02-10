@@ -24,7 +24,7 @@ const cookieSession = require('cookie-session');
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         return {
-          type: 'sqlite',
+          type: 'better-sqlite3',
           database: config.get<string>('DB_NAME'),
           synchronize: true,
           entities: [User, Report],
